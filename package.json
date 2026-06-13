@@ -1,0 +1,20 @@
+{
+  "name": "spec",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "spec:dev": "vitepress dev",
+    "spec:build": "vitepress build",
+    "spec:preview": "vitepress preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.0",
+  "devDependencies": {
+    "vite": "7.3.5",
+    "vitepress": "2.0.0-alpha.17"
+  }
+}
