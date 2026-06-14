@@ -3,7 +3,6 @@ title: 執筆ガイドライン
 description: 設計書の構成・用語・レビュー基準
 subcategory: 執筆
 status: 承認済み
-updated: 2026-06-09
 related:
   - guide/api-format
 ---

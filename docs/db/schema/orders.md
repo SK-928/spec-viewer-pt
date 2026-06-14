@@ -3,7 +3,6 @@ title: orders テーブル
 description: 注文ヘッダを格納するテーブル
 subcategory: スキーマ
 status: レビュー中
-updated: 2026-06-08
 dependsOn:
   - db/schema/users
 related:

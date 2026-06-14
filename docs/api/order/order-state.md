@@ -3,7 +3,6 @@ title: 注文状態遷移
 description: 注文ステータスの遷移ルールとイベント
 subcategory: 注文
 status: ドラフト
-updated: 2026-05-31
 dependsOn:
   - api/order/order-api
 ---

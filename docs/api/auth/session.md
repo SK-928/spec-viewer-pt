@@ -3,7 +3,6 @@ title: セッション管理
 description: セッション寿命とローテーション戦略
 subcategory: 認証
 status: レビュー中
-updated: 2026-06-07
 dependsOn:
   - api/auth/token
 ---

@@ -5,7 +5,6 @@ subcategory: 認証
 method: POST
 path: /signup
 status: 承認済み
-updated: 2026-06-12
 dependsOn:
   - api/auth/scope
   - db/schema/users

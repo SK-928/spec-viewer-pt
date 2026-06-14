@@ -5,7 +5,6 @@ subcategory: 決済
 method: POST
 path: /payments
 status: レビュー中
-updated: 2026-06-07
 related:
   - api/order/order-api
 ---

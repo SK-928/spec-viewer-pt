@@ -3,7 +3,6 @@ title: API設計フォーマット
 description: APIセクションの設計書の書き方 — セクション構成と記述規約
 subcategory: フォーマット
 status: 承認済み
-updated: 2026-06-07
 related:
   - api/auth/signup
   - guide/writing

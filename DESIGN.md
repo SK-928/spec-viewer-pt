@@ -69,7 +69,6 @@ title: 認証・認可アーキテクチャ
 description: OAuth 2.1 / OIDC を用いた…   # 一覧・OGP で使用
 subcategory: 認証           # サブカテゴリ（frontmatter で指定）
 status: 承認済み            # ドラフト | レビュー中 | 承認済み | 廃止
-updated: 2026-06-12        # 最終更新日（YYYY-MM-DD）
 dependsOn:                 # 依存している文書（方向的・docs/ からの path 配列）
   - guide/architecture-overview
 related:                   # 関連文書（参照用・docs/ からの path 配列）
@@ -80,6 +79,7 @@ related:                   # 関連文書（参照用・docs/ からの path 配
 > **注:** `id` / `author` / `tags` / `category` / `reviewers` / `created` は廃止 — 識別子はファイルパス、section はディレクトリから導出。`revision` / 改訂履歴も削除済み。
 > `dependsOn` = この文書が依存する文書（方向的）。`related` = 関連文書（参照用）。ともに docs/ からの相対 **path**（.md 無し）で指定する（title の揺らぎでリンク切れしない・エディタのパス補完が効く）。
 > section はディレクトリ第1階層から導出、`subcategory` は frontmatter で指定する（英 directory + 日本語表示のため）。
+> 更新日は frontmatter に書かず、**git の最終コミット日時**から自動取得する（`config.lastUpdated: true`）。
 
 ## 5. デザイン方向
 

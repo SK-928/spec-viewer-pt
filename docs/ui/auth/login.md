@@ -3,7 +3,6 @@ title: ログイン画面 仕様書
 description: ログインフォーム・ソーシャルログイン・2FA
 subcategory: 認証
 status: 承認済み
-updated: 2026-06-10
 dependsOn:
   - api/auth/token
 related:

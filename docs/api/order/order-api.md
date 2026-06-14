@@ -5,7 +5,6 @@ subcategory: 注文
 method: POST
 path: /orders
 status: 承認済み
-updated: 2026-06-07
 dependsOn:
   - api/payment/payment-api
 related:

@@ -103,6 +103,7 @@ interface MarkdownModule {
     title: string
     description: string
     frontmatter: Record<string, unknown>
+    lastUpdated?: number // git の最終コミット日時（ミリ秒）。config の lastUpdated: true で設定
   }
 }
 
@@ -121,6 +122,21 @@ function toDocPath(path: string): string {
   return path.replace(/^(\.\.\/)+docs\//, '').replace(/\.md$/, '').replace(/\/index$/, '/')
 }
 
+// 日付値を YYYY-MM-DD に正規化。YAML 日付(Date)・lastUpdated(数値ミリ秒)・文字列に対応
+// toISOString（UTC）だと JST のコミット日が前日になるため、ローカル日付で組み立てる
+function normalizeDate(v: unknown): string {
+  if (!v) return ''
+  const d = v instanceof Date ? v : typeof v === 'number' ? new Date(v) : null
+  if (d) {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+  const s = String(v)
+  return s.length >= 10 ? s.slice(0, 10) : s
+}
+
 export const docs: SpecDoc[] = Object.entries(modules)
   .map(([path, mod]) => ({ path, mod, section: deriveSection(path) }))
   .filter((e): e is { path: string; mod: MarkdownModule; section: SectionKey } => {
@@ -137,7 +153,8 @@ export const docs: SpecDoc[] = Object.entries(modules)
       title: String(fm.title ?? mod.__pageData.title),
       description: String(fm.description ?? mod.__pageData.description ?? ''),
       status: (fm.status as DocStatus) ?? 'ドラフト',
-      updated: fm.updated ? String(fm.updated) : '',
+      // git の最終コミット日時を優先。未コミット等で取れない場合は frontmatter の updated にフォールバック
+      updated: normalizeDate(mod.__pageData.lastUpdated ?? fm.updated),
       href: '/' + docPath,
       path: docPath,
       method: fm.method ? String(fm.method) : undefined,

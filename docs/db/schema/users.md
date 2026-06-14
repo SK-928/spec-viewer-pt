@@ -3,7 +3,6 @@ title: users テーブル
 description: ユーザーアカウントを格納するテーブル
 subcategory: スキーマ
 status: 承認済み
-updated: 2026-06-13
 related:
   - api/auth/signup
 ---

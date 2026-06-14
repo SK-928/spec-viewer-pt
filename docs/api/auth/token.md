@@ -3,7 +3,6 @@ title: トークン仕様
 description: アクセストークンとリフレッシュトークンの形式・有効期限
 subcategory: 認証
 status: 承認済み
-updated: 2026-06-09
 dependsOn:
   - api/auth/scope
 related:
