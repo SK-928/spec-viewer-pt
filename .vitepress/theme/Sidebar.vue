@@ -46,34 +46,81 @@ function onKeydown(e: KeyboardEvent) {
     toggleSidebar()
   }
 }
+
+// 幅リサイズ（右端ドラッグ。localStorage で永続化）
+const MIN_WIDTH = 200
+const MAX_WIDTH = 420
+const DEFAULT_WIDTH = 224 // w-56 相当
+const COLLAPSED_WIDTH = 48 // 閉じたときの細幅（展開ボタンのみ表示）
+const WIDTH_KEY = 'sv-sidebar-width'
+const asideRef = ref<HTMLElement | null>(null)
+const sidebarWidth = ref(DEFAULT_WIDTH)
+const resizing = ref(false)
+let asideLeft = 0
+
+function startResize(e: PointerEvent) {
+  e.preventDefault()
+  resizing.value = true
+  asideLeft = asideRef.value ? asideRef.value.getBoundingClientRect().left : 0
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  window.addEventListener('pointermove', onResizeMove)
+  window.addEventListener('pointerup', endResize)
+}
+function onResizeMove(e: PointerEvent) {
+  if (!resizing.value) return
+  const next = e.clientX - asideLeft
+  sidebarWidth.value = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, next))
+}
+function endResize() {
+  if (!resizing.value) return
+  resizing.value = false
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+  window.removeEventListener('pointermove', onResizeMove)
+  window.removeEventListener('pointerup', endResize)
+  try { localStorage.setItem(WIDTH_KEY, String(sidebarWidth.value)) } catch { /* ignore */ }
+}
 onMounted(() => {
   try { sidebarCollapsed.value = localStorage.getItem(STORAGE_KEY) === '1' } catch { /* ignore */ }
   try {
     const collapsed = JSON.parse(localStorage.getItem(treeKey.value) || '[]') as string[]
     collapsedCats.value = Object.fromEntries(collapsed.map((k) => [k, true]))
   } catch { /* ignore */ }
+  try {
+    const saved = Number(localStorage.getItem(WIDTH_KEY))
+    if (saved >= MIN_WIDTH && saved <= MAX_WIDTH) sidebarWidth.value = saved
+  } catch { /* ignore */ }
   window.addEventListener('keydown', onKeydown)
 })
-onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('pointermove', onResizeMove)
+  window.removeEventListener('pointerup', endResize)
+})
 </script>
 
 <template>
-  <!-- 折たたみ時の復元ボタン（lg 以上のみ） -->
-  <button
-    v-if="sidebarCollapsed"
-    type="button"
-    @click="toggleSidebar"
-    class="fixed left-4 top-1/2 -translate-y-1/2 z-20 hidden lg:grid place-items-center w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300"
-    title="サイドバーを表示 (Ctrl+B)"
-    aria-label="サイドバーを表示"
-  >
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
-  </button>
-
   <aside
-    v-if="!sidebarCollapsed && meta"
-    class="hidden lg:block w-56 shrink-0 py-8 border-r border-slate-100 dark:border-slate-800"
+    v-if="meta"
+    ref="asideRef"
+    :style="{ width: (sidebarCollapsed ? COLLAPSED_WIDTH : sidebarWidth) + 'px' }"
+    class="hidden lg:block shrink-0 relative py-8 border-r border-slate-100 dark:border-slate-800 overflow-hidden"
+    :class="resizing ? '' : 'transition-[width] duration-150 ease-out'"
   >
+    <!-- 縮小時: 展開ボタンのみ（ペイン上部） -->
+    <button
+      v-if="sidebarCollapsed"
+      type="button"
+      @click="toggleSidebar"
+      class="grid place-items-center w-8 h-8 mx-auto rounded-md text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300"
+      title="サイドバーを表示 (Ctrl+B)"
+      aria-label="サイドバーを表示"
+    >
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+    </button>
+
+    <template v-else>
     <div class="flex items-center justify-between px-3 mb-3">
       <p class="text-[11px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase">{{ meta.label }}</p>
       <button
@@ -126,5 +173,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         >{{ s.label }} <span class="text-slate-400 dark:text-slate-500">↗</span></a>
       </nav>
     </div>
+    </template>
+
+    <!-- 幅リサイズハンドル（展開時のみ） -->
+    <div
+      v-if="!sidebarCollapsed"
+      @pointerdown="startResize"
+      title="ドラッグで幅を変更"
+      class="absolute top-0 bottom-0 right-0 w-1 cursor-col-resize z-10"
+      :class="resizing ? 'bg-brand-500/60' : 'bg-transparent hover:bg-brand-400/40'"
+    ></div>
   </aside>
 </template>
