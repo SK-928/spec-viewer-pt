@@ -34,17 +34,25 @@ function totalCount(n: SubcatNode): number {
       <span class="ml-auto text-[11px] text-slate-400 dark:text-slate-500">{{ totalCount(node) }}</span>
     </button>
     <div v-show="node.name === '' || ctx.isExpanded(node.path)" class="ml-2 border-l border-slate-100 dark:border-slate-800 pl-2 mt-0.5">
-      <!-- 直下文書 -->
-      <a
+      <!-- 直下文書（#doc slot で描画を差し替え可能。既定はリンク） -->
+      <slot
         v-for="d in node.docs"
         :key="d.title"
-        :href="d.href"
-        :class="ctx.isActive(d.href)
-          ? 'block px-3 py-1.5 rounded-md bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 font-medium truncate'
-          : 'block px-3 py-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 truncate'"
-      >{{ d.title }}</a>
-      <!-- 子ノード（再帰） -->
-      <SidebarTree v-for="child in node.children" :key="child.path" :node="child" />
+        name="doc"
+        :doc="d"
+        :active="ctx.isActive(d.href)"
+      >
+        <a
+          :href="d.href"
+          :class="ctx.isActive(d.href)
+            ? 'block px-3 py-1.5 rounded-md bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 font-medium truncate'
+            : 'block px-3 py-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 truncate'"
+        >{{ d.title }}</a>
+      </slot>
+      <!-- 子ノード（再帰）。#doc slot を子にも受け継ぐ（受け継がないとフォールバックの a href になる） -->
+      <SidebarTree v-for="child in node.children" :key="child.path" :node="child">
+        <template #doc="slotProps"><slot name="doc" v-bind="slotProps" /></template>
+      </SidebarTree>
     </div>
   </div>
 </template>

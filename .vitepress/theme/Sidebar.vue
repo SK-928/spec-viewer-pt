@@ -1,11 +1,12 @@
 <script setup lang="ts">
 // セクションサイドバー（セクション一覧・doc 画面で共有）。
 // DESIGN.md §7: 現セクションのツリー（サブカテゴリ → 文書）＋他セクション＋全体折たたみ（« / Ctrl+B）
-import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
+import { ref, computed, onMounted, provide } from 'vue'
 import { useRoute } from 'vitepress'
 import { sectionMeta, sections, subcategoryTree } from './docs-data'
 import SidebarTree from './SidebarTree.vue'
 import { SIDEBAR_CTX } from './sidebar-ctx'
+import { useSidebarChrome } from './useSidebarChrome'
 
 const props = defineProps<{ section: string }>()
 
@@ -37,70 +38,15 @@ function toggleCat(path: string) {
 // 子コンポーネント(SidebarTree)へ折たたみ状態・active 判定を共有
 provide(SIDEBAR_CTX, { isExpanded, toggleCat, isActive })
 
-// 全体折たたみ（« / Ctrl+B / localStorage）
-const sidebarCollapsed = ref(false)
-const STORAGE_KEY = 'sv-sidebar'
-function toggleSidebar() {
-  sidebarCollapsed.value = !sidebarCollapsed.value
-  try { localStorage.setItem(STORAGE_KEY, sidebarCollapsed.value ? '1' : '0') } catch { /* ignore */ }
-}
-function onKeydown(e: KeyboardEvent) {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
-    e.preventDefault()
-    toggleSidebar()
-  }
-}
+// 幅リサイズ + « / Ctrl+B 全体折りたたみ（useSidebarChrome で DepsMap と共有）
+const { sidebarCollapsed, sidebarWidth, resizing, asideRef, toggleSidebar, startResize, COLLAPSED_WIDTH } = useSidebarChrome()
 
-// 幅リサイズ（右端ドラッグ。localStorage で永続化）
-const MIN_WIDTH = 200
-const MAX_WIDTH = 420
-const DEFAULT_WIDTH = 224 // w-56 相当
-const COLLAPSED_WIDTH = 48 // 閉じたときの細幅（展開ボタンのみ表示）
-const WIDTH_KEY = 'sv-sidebar-width'
-const asideRef = ref<HTMLElement | null>(null)
-const sidebarWidth = ref(DEFAULT_WIDTH)
-const resizing = ref(false)
-let asideLeft = 0
-
-function startResize(e: PointerEvent) {
-  e.preventDefault()
-  resizing.value = true
-  asideLeft = asideRef.value ? asideRef.value.getBoundingClientRect().left : 0
-  document.body.style.cursor = 'col-resize'
-  document.body.style.userSelect = 'none'
-  window.addEventListener('pointermove', onResizeMove)
-  window.addEventListener('pointerup', endResize)
-}
-function onResizeMove(e: PointerEvent) {
-  if (!resizing.value) return
-  const next = e.clientX - asideLeft
-  sidebarWidth.value = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, next))
-}
-function endResize() {
-  if (!resizing.value) return
-  resizing.value = false
-  document.body.style.cursor = ''
-  document.body.style.userSelect = ''
-  window.removeEventListener('pointermove', onResizeMove)
-  window.removeEventListener('pointerup', endResize)
-  try { localStorage.setItem(WIDTH_KEY, String(sidebarWidth.value)) } catch { /* ignore */ }
-}
+// ツリー折たたみ状態の復元（セクション別 localStorage）
 onMounted(() => {
-  try { sidebarCollapsed.value = localStorage.getItem(STORAGE_KEY) === '1' } catch { /* ignore */ }
   try {
     const collapsed = JSON.parse(localStorage.getItem(treeKey.value) || '[]') as string[]
     collapsedCats.value = Object.fromEntries(collapsed.map((k) => [k, true]))
   } catch { /* ignore */ }
-  try {
-    const saved = Number(localStorage.getItem(WIDTH_KEY))
-    if (saved >= MIN_WIDTH && saved <= MAX_WIDTH) sidebarWidth.value = saved
-  } catch { /* ignore */ }
-  window.addEventListener('keydown', onKeydown)
-})
-onUnmounted(() => {
-  window.removeEventListener('keydown', onKeydown)
-  window.removeEventListener('pointermove', onResizeMove)
-  window.removeEventListener('pointerup', endResize)
 })
 </script>
 

@@ -3,9 +3,12 @@
 // 文書フォーカス型: 選択文書を中央に、依存先（前提）を左、被依存（影響先）を右に配置。
 // 矢印 A→B は「AがBに依存」。ノードクリックで中心切替。
 // 間接依存（依存の依存）は直接依存のさらに左（2個先）に faded 表示。範囲でセレクタをセクション絞り込み
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, provide } from 'vue'
 import { useRoute } from 'vitepress'
-import { docs, docByTitle, docByPath, dependentsOf, sectionMeta, statusMeta, sections, docsBySection, subcategoryLabel, type SpecDoc, type DocStatus, type SectionKey } from './docs-data'
+import { docs, docByTitle, docByPath, dependentsOf, sectionMeta, statusMeta, sections, subcategoryTree, subcategoryLabel, type SpecDoc, type SubcatNode, type DocStatus, type SectionKey } from './docs-data'
+import SidebarTree from './SidebarTree.vue'
+import { SIDEBAR_CTX } from './sidebar-ctx'
+import { useSidebarChrome } from './useSidebarChrome'
 
 // 選択文書。?doc=<title> があればそれを、無ければ未選択（グラフに「文書を選択してください」を表示）
 // VitePress の route.query は文字列（'?doc=...'）なので正規表現で抽出
@@ -135,14 +138,50 @@ function statusDot(status: DocStatus): string {
   return { '承認済み': 'fill-emerald-500', 'レビュー中': 'fill-amber-500', 'ドラフト': 'fill-slate-400' }[status]
 }
 
-// セレクタ用: 範囲でセクション絞り込み
-const filteredSelectorSections = computed(() => {
+// セレクタ用: 範囲でセクション絞り込み + サブカテゴリツリー（Sidebar.vue と共通の SidebarTree を使用）。
+// path にセクションキーを前置し、複数セクションを並べても折たたみキーが一意になるようにする
+function prefixPath(node: SubcatNode, section: string): SubcatNode {
+  return {
+    name: node.name,
+    path: node.path === '' ? `${section}/` : `${section}/${node.path}`,
+    docs: node.docs,
+    children: node.children.map((c) => prefixPath(c, section)),
+  }
+}
+const selectorTrees = computed(() => {
   const list = scope.value === 'all' ? sections : sections.filter((s) => s.key === scope.value)
-  return list.map((s) => ({ meta: s, docs: docsBySection(s.key) }))
+  return list.map((meta) => ({ meta, tree: subcategoryTree(meta.key).map((n) => prefixPath(n, meta.key)) }))
 })
 function hasLinks(d: SpecDoc): boolean {
   return !!(d.dependsOn?.length || dependentsOf(d.path).length)
 }
+
+// ツリー折たたみ状態（localStorage: sv-tree-deps）。キーはセクション前置付きノードパス。デフォルト全展開
+const DEPS_TREE_KEY = 'sv-tree-deps'
+const collapsedCats = ref<Record<string, boolean>>({})
+function isExpanded(path: string): boolean {
+  return collapsedCats.value[path] !== true
+}
+function toggleCat(path: string): void {
+  collapsedCats.value = { ...collapsedCats.value, [path]: isExpanded(path) }
+  try {
+    const collapsed = Object.keys(collapsedCats.value).filter((k) => collapsedCats.value[k])
+    localStorage.setItem(DEPS_TREE_KEY, JSON.stringify(collapsed))
+  } catch { /* ignore */ }
+}
+function isActive(href: string): boolean {
+  return !!selectedDoc.value && selectedDoc.value.href === href
+}
+provide(SIDEBAR_CTX, { isExpanded, toggleCat, isActive })
+
+// 幅リサイズ + « / Ctrl+B 全体折りたたみ（Sidebar.vue と共有）
+const { sidebarCollapsed, sidebarWidth, resizing, asideRef, toggleSidebar, startResize, COLLAPSED_WIDTH } = useSidebarChrome()
+onMounted(() => {
+  try {
+    const collapsed = JSON.parse(localStorage.getItem(DEPS_TREE_KEY) || '[]') as string[]
+    collapsedCats.value = Object.fromEntries(collapsed.map((k) => [k, true]))
+  } catch { /* ignore */ }
+})
 </script>
 
 <template>
@@ -186,24 +225,66 @@ function hasLinks(d: SpecDoc): boolean {
     <div class="mx-auto max-w-7xl px-6 py-6 flex gap-6 w-full flex-1">
 
       <!-- left: selector -->
-      <aside class="hidden lg:block w-60 shrink-0">
-        <div v-for="s in filteredSelectorSections" :key="s.meta.key" class="mb-4">
-          <p class="px-2 text-[11px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-2">{{ s.meta.label }}</p>
-          <nav class="text-sm flex flex-col">
+      <aside
+        ref="asideRef"
+        :style="{ width: (sidebarCollapsed ? COLLAPSED_WIDTH : sidebarWidth) + 'px' }"
+        class="hidden lg:block shrink-0 relative py-8 border-r border-slate-100 dark:border-slate-800 overflow-hidden"
+        :class="resizing ? '' : 'transition-[width] duration-150 ease-out'"
+      >
+        <!-- 縮小時: 展開ボタンのみ -->
+        <button
+          v-if="sidebarCollapsed"
+          type="button"
+          @click="toggleSidebar"
+          class="grid place-items-center w-8 h-8 mx-auto rounded-md text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300"
+          title="サイドバーを表示 (Ctrl+B)"
+          aria-label="サイドバーを表示"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+
+        <template v-else>
+          <div class="flex items-center justify-between px-3 mb-3">
+            <p class="text-[11px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase">選択</p>
             <button
-              v-for="d in s.docs"
-              :key="d.title"
               type="button"
-              @click="select(d.title)"
-              :class="selected === d.title
-                ? 'flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 font-medium text-left'
-                : 'flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-left'"
+              @click="toggleSidebar"
+              class="grid place-items-center w-6 h-6 -mr-1 rounded-md text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300"
+              title="サイドバーを隠す (Ctrl+B)"
+              aria-label="サイドバーを隠す"
             >
-              <span class="truncate">{{ d.title }}</span>
-              <span v-if="hasLinks(d)" class="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">●</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg>
             </button>
-          </nav>
-        </div>
+          </div>
+          <div v-for="s in selectorTrees" :key="s.meta.key" class="mb-4">
+            <p class="px-3 text-[11px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-2">{{ s.meta.label }}</p>
+            <nav class="text-sm flex flex-col">
+              <SidebarTree v-for="node in s.tree" :key="node.path || '__root__'" :node="node">
+                <template #doc="{ doc, active }">
+                  <button
+                    type="button"
+                    @click="select(doc.title)"
+                    :class="active
+                      ? 'flex items-center justify-between gap-2 w-full px-3 py-1.5 rounded-md bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 font-medium text-left'
+                      : 'flex items-center justify-between gap-2 w-full px-3 py-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-left'"
+                  >
+                    <span class="truncate">{{ doc.title }}</span>
+                    <span v-if="hasLinks(doc)" class="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">●</span>
+                  </button>
+                </template>
+              </SidebarTree>
+            </nav>
+          </div>
+        </template>
+
+        <!-- 幅リサイズハンドル（展開時のみ） -->
+        <div
+          v-if="!sidebarCollapsed"
+          @pointerdown="startResize"
+          title="ドラッグで幅を変更"
+          class="absolute top-0 bottom-0 right-0 w-1 cursor-col-resize z-10"
+          :class="resizing ? 'bg-brand-500/60' : 'bg-transparent hover:bg-brand-400/40'"
+        ></div>
       </aside>
 
       <!-- center: graph -->
