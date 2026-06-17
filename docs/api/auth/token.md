@@ -1,7 +1,9 @@
 ---
 title: トークン仕様
 description: アクセストークンとリフレッシュトークンの形式・有効期限
-subcategory: 認証
+subcategory:
+  - 認証
+  - トークン
 status: 承認済み
 dependsOn:
   - api/auth/scope

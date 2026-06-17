@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { docsBySection, sectionMeta, statusMeta, subcategoriesOf, type DocStatus } from './docs-data'
+import { docsBySection, sectionMeta, statusMeta, subcategoryTree, flattenSubcatTree, subcategoryMatches, subcategoryLabel, type DocStatus } from './docs-data'
 import SectionIcon from './SectionIcon.vue'
 import Sidebar from './Sidebar.vue'
 
@@ -32,17 +32,29 @@ const sortOptions: { key: SortOrder; label: string }[] = [
 const filteredDocs = computed(() => {
   let list = sectionDocs.value
   if (statusFilter.value !== 'all') list = list.filter((d) => d.status === statusFilter.value)
-  if (subcategoryFilter.value !== 'all') list = list.filter((d) => d.subcategory === subcategoryFilter.value)
+  if (subcategoryFilter.value !== 'all') list = list.filter((d) => subcategoryMatches(d.subcategory, subcategoryFilter.value))
   return sortOrder.value === 'title'
     ? [...list].sort((a, b) => a.title.localeCompare(b.title, 'ja'))
     : list
 })
 
-// サブカテゴリフィルタの選択肢（メニュー用。「すべて」+ 当セクションのサブカテゴリ）
+// サブカテゴリフィルタの選択肢（メニュー用）。
+// 「すべて」+ ツリーを平坦化した全ノード（depth でインデント）。キーはパス文字列
 const subcategoryOptions = computed(() => [
-  { key: 'all', label: 'すべて' },
-  ...subcategoriesOf(props.section).map((c) => ({ key: c.name, label: c.name })),
+  { key: 'all', label: 'すべて', depth: 0 },
+  ...flattenSubcatTree(subcategoryTree(props.section)).map((n) => ({
+    key: n.key,
+    label: n.name || '(未分類)',
+    depth: n.depth,
+    count: n.count,
+  })),
 ])
+// 選択中フィルタのボタン表示ラベル。パス（"認証/トークン"）→"認証 › トークン"
+const subcategoryFilterLabel = computed(() => {
+  if (subcategoryFilter.value === 'all') return 'すべて'
+  if (!subcategoryFilter.value) return '(未分類)'
+  return subcategoryFilter.value.split('/').join(' › ')
+})
 
 // ドロップダウン開閉（サブカテゴリ / 並び順）。同時に開くのは1つだけ
 const openMenu = ref<'subcategory' | 'sort' | null>(null)
@@ -130,7 +142,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               @click="toggleMenu('subcategory')"
               class="flex items-center gap-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800"
             >
-              サブカテゴリ: {{ subcategoryFilter === 'all' ? 'すべて' : subcategoryFilter }}
+              サブカテゴリ: {{ subcategoryFilterLabel }}
               <svg
                 class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform"
                 :class="openMenu === 'subcategory' ? 'rotate-180' : ''"
@@ -146,12 +158,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 :key="opt.key"
                 type="button"
                 @click="selectSubcategory(opt.key)"
+                :style="{ paddingLeft: 12 + opt.depth * 16 + 'px' }"
                 :class="subcategoryFilter === opt.key
-                  ? 'w-full flex items-center justify-between px-3 py-1.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                  : 'w-full flex items-center justify-between px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'"
+                  ? 'w-full flex items-center pr-3 py-1.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  : 'w-full flex items-center pr-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'"
               >
-                {{ opt.label }}
-                <svg v-if="subcategoryFilter === opt.key" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+                <span class="truncate">{{ opt.label }}</span>
+                <span v-if="opt.key !== 'all'" class="ml-2 text-[11px] text-slate-400 dark:text-slate-500">{{ opt.count }}</span>
+                <svg v-if="subcategoryFilter === opt.key" class="ml-auto w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
               </button>
             </div>
           </div>
@@ -206,7 +220,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             class="group flex items-center gap-4 px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition"
           >
             <div class="min-w-0 flex-1">
-              <span class="text-[11px] font-medium text-slate-400 dark:text-slate-500">{{ d.subcategory }}</span>
+              <span class="text-[11px] font-medium text-slate-400 dark:text-slate-500">{{ subcategoryLabel(d.subcategory) }}</span>
               <p class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-brand-700 dark:group-hover:text-brand-300 truncate">
                 {{ d.title }}
                 <span v-if="d.method" class="font-mono text-[11px] text-slate-400 dark:text-slate-500 font-normal">{{ d.method }}</span>

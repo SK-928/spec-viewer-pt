@@ -1,15 +1,17 @@
 <script setup lang="ts">
 // セクションサイドバー（セクション一覧・doc 画面で共有）。
 // DESIGN.md §7: 現セクションのツリー（サブカテゴリ → 文書）＋他セクション＋全体折たたみ（« / Ctrl+B）
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
 import { useRoute } from 'vitepress'
-import { sectionMeta, sections, subcategoriesOf } from './docs-data'
+import { sectionMeta, sections, subcategoryTree } from './docs-data'
+import SidebarTree from './SidebarTree.vue'
+import { SIDEBAR_CTX } from './sidebar-ctx'
 
 const props = defineProps<{ section: string }>()
 
 const route = useRoute()
 const meta = computed(() => sectionMeta(props.section))
-const subcategories = computed(() => subcategoriesOf(props.section))
+const tree = computed(() => subcategoryTree(props.section))
 const otherSections = computed(() => sections.filter((s) => s.key !== props.section))
 
 // 現在表示中の文書をハイライト（route.path / href を末尾スラッシュと .html を除去して比較）
@@ -19,19 +21,21 @@ function isActive(href: string): boolean {
   return norm(route.path) === norm(href)
 }
 
-// ツリー折たたみ（セクション別 localStorage。デフォルト = 全展開）
+// ツリー折たたみ（セクション別 localStorage。デフォルト = 全展開）。キーはノードパス文字列
 const treeKey = computed(() => `sv-tree-${props.section}`)
 const collapsedCats = ref<Record<string, boolean>>({})
-function isExpanded(name: string): boolean {
-  return collapsedCats.value[name] !== true
+function isExpanded(path: string): boolean {
+  return collapsedCats.value[path] !== true
 }
-function toggleCat(name: string) {
-  collapsedCats.value = { ...collapsedCats.value, [name]: isExpanded(name) }
+function toggleCat(path: string) {
+  collapsedCats.value = { ...collapsedCats.value, [path]: isExpanded(path) }
   try {
     const collapsed = Object.keys(collapsedCats.value).filter((k) => collapsedCats.value[k])
     localStorage.setItem(treeKey.value, JSON.stringify(collapsed))
   } catch { /* ignore */ }
 }
+// 子コンポーネント(SidebarTree)へ折たたみ状態・active 判定を共有
+provide(SIDEBAR_CTX, { isExpanded, toggleCat, isActive })
 
 // 全体折たたみ（« / Ctrl+B / localStorage）
 const sidebarCollapsed = ref(false)
@@ -135,31 +139,7 @@ onUnmounted(() => {
     </div>
 
     <nav class="text-sm flex flex-col">
-      <div v-for="cat in subcategories" :key="cat.name" class="mb-1">
-        <button
-          type="button"
-          @click="toggleCat(cat.name)"
-          class="w-full flex items-center gap-1.5 px-3 py-1.5 rounded-md text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-800/50"
-        >
-          <svg
-            class="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0 transition-transform"
-            :class="isExpanded(cat.name) ? '' : '-rotate-90'"
-            fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 20 20"
-          ><path d="M5.5 7.5 10 12l4.5-4.5"/></svg>
-          <span class="truncate">{{ cat.name }}</span>
-          <span class="ml-auto text-[11px] text-slate-400 dark:text-slate-500">{{ cat.docs.length }}</span>
-        </button>
-        <div v-show="isExpanded(cat.name)" class="ml-2 border-l border-slate-100 dark:border-slate-800 pl-2 mt-0.5">
-          <a
-            v-for="d in cat.docs"
-            :key="d.title"
-            :href="d.href"
-            :class="isActive(d.href)
-              ? 'block px-3 py-1.5 rounded-md bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 font-medium truncate'
-              : 'block px-3 py-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 truncate'"
-          >{{ d.title }}</a>
-        </div>
-      </div>
+      <SidebarTree v-for="node in tree" :key="node.path || '__root__'" :node="node" />
     </nav>
 
     <div class="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">

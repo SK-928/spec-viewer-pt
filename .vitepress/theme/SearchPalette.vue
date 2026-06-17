@@ -4,7 +4,7 @@
 // 後段で minisearch（docs/*.md の本文検索）に差し替え。
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vitepress'
-import { docs, sections, sectionMeta, type SectionKey, type SpecDoc } from './docs-data'
+import { docs, sections, sectionMeta, subcategoryLabel, type SectionKey, type SpecDoc } from './docs-data'
 
 const emit = defineEmits<{ (e: 'close'): void }>()
 const router = useRouter()
@@ -25,7 +25,7 @@ const results = computed(() => {
     (d) =>
       d.title.toLowerCase().includes(q) ||
       d.description.toLowerCase().includes(q) ||
-      d.subcategory.toLowerCase().includes(q)
+      subcategoryLabel(d.subcategory).toLowerCase().includes(q)
   )
 })
 
@@ -163,7 +163,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           >
             <div class="flex items-center gap-2 mb-1">
               <span class="text-[11px] font-semibold" :class="sectionMeta(d.section)!.accentText">{{ sectionMeta(d.section)!.label }}</span>
-              <span class="text-[11px] text-slate-400 dark:text-slate-500">› {{ d.subcategory }}</span>
+              <span class="text-[11px] text-slate-400 dark:text-slate-500">› {{ subcategoryLabel(d.subcategory) }}</span>
             </div>
             <p class="font-medium text-slate-900 dark:text-slate-100 truncate" v-html="highlight(d.title)"></p>
             <p class="text-sm text-slate-500 dark:text-slate-400 line-clamp-1" v-html="highlight(d.description)"></p>

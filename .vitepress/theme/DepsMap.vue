@@ -5,7 +5,7 @@
 // 間接依存（依存の依存）は直接依存のさらに左（2個先）に faded 表示。範囲でセレクタをセクション絞り込み
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vitepress'
-import { docs, docByTitle, docByPath, dependentsOf, sectionMeta, statusMeta, sections, docsBySection, type SpecDoc, type DocStatus, type SectionKey } from './docs-data'
+import { docs, docByTitle, docByPath, dependentsOf, sectionMeta, statusMeta, sections, docsBySection, subcategoryLabel, type SpecDoc, type DocStatus, type SectionKey } from './docs-data'
 
 // 選択文書。?doc=<title> があればそれを、無ければ未選択（グラフに「文書を選択してください」を表示）
 // VitePress の route.query は文字列（'?doc=...'）なので正規表現で抽出
@@ -304,7 +304,7 @@ function hasLinks(d: SpecDoc): boolean {
             <span class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium" :class="statusMeta[selectedDoc.status].class">
               <span class="status-dot" :class="statusMeta[selectedDoc.status].dot"></span>{{ selectedDoc.status }}
             </span>
-            <span class="text-slate-400 dark:text-slate-500">{{ meta?.label }} › {{ selectedDoc.subcategory }}</span>
+            <span class="text-slate-400 dark:text-slate-500">{{ meta?.label }} › {{ subcategoryLabel(selectedDoc.subcategory) }}</span>
           </div>
 
           <div class="grid grid-cols-2 gap-3 mt-5">

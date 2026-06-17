@@ -3,7 +3,7 @@
 // 本文は <Content />（Markdown）。周囲にパンくず・サイドバー・doc header・prev/next・TOC を配置
 import { computed, ref } from 'vue'
 import { useData, useRoute, onContentUpdated } from 'vitepress'
-import { docs, sectionMeta, statusMeta, type DocStatus } from './docs-data'
+import { docs, sectionMeta, statusMeta, subcategoryLabel, type DocStatus } from './docs-data'
 import Sidebar from './Sidebar.vue'
 
 const { frontmatter } = useData()
@@ -24,7 +24,7 @@ const depsHref = computed(() =>
 )
 const prevDoc = computed(() => currentIndex.value > 0 ? docs[currentIndex.value - 1] : null)
 const nextDoc = computed(() => currentIndex.value >= 0 && currentIndex.value < docs.length - 1 ? docs[currentIndex.value + 1] : null)
-const subcategory = computed(() => currentDoc.value?.subcategory || '')
+const subcategory = computed(() => subcategoryLabel(currentDoc.value?.subcategory))
 
 // TOC: VitePress 2.0-alpha では page.headers が空のため、Content レンダリング後に DOM から H2/H3 を抽出（クライアント側）
 interface Header { level: number; title: string; slug: string }

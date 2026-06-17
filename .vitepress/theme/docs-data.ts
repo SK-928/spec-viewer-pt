@@ -8,7 +8,7 @@ export type DocStatus = '承認済み' | 'レビュー中' | 'ドラフト'
 
 export interface SpecDoc {
   section: SectionKey
-  subcategory: string
+  subcategory: string[] // 階層パス（ルート→葉）。frontmatter で文字列1つまたは配列で指定
   title: string
   method?: string
   description: string
@@ -137,6 +137,14 @@ function normalizeDate(v: unknown): string {
   return s.length >= 10 ? s.slice(0, 10) : s
 }
 
+// frontmatter の subcategory（文字列1つ or 配列）を階層パス配列に正規化。
+// 空要素は除外。空配列 = 未分類。文字列1つは後方互換で [s] になる。
+function normalizeSubcategory(v: unknown): string[] {
+  if (Array.isArray(v)) return v.map((s) => String(s).trim()).filter(Boolean)
+  if (typeof v === 'string' && v.trim()) return [v.trim()]
+  return []
+}
+
 export const docs: SpecDoc[] = Object.entries(modules)
   .map(([path, mod]) => ({ path, mod, section: deriveSection(path) }))
   .filter((e): e is { path: string; mod: MarkdownModule; section: SectionKey } => {
@@ -149,7 +157,7 @@ export const docs: SpecDoc[] = Object.entries(modules)
     const docPath = toDocPath(path)
     return {
       section,
-      subcategory: String(fm.subcategory ?? ''),
+      subcategory: normalizeSubcategory(fm.subcategory),
       title: String(fm.title ?? mod.__pageData.title),
       description: String(fm.description ?? mod.__pageData.description ?? ''),
       status: (fm.status as DocStatus) ?? 'ドラフト',
@@ -185,15 +193,70 @@ export function dependentsOf(path: string): SpecDoc[] {
   return docs.filter((d) => d.dependsOn?.includes(path))
 }
 
-// サブカテゴリ → 文書 のグループ化（サイドバーツリー用）
-export function subcategoriesOf(section: string): { name: string; docs: SpecDoc[] }[] {
-  const groups: { name: string; docs: SpecDoc[] }[] = []
+// サブカテゴリの多階層ツリーノード（サイドバーツリー用）。subcategory[] をパスとして trie 構築
+export interface SubcatNode {
+  name: string
+  path: string // ルートからのフルパス（"/" 区切り）。折たたみキー・フィルタキーに使用
+  docs: SpecDoc[] // このノードの深さちょうどで終わる文書（子孫は含まない）
+  children: SubcatNode[]
+}
+
+// セクション配下の文書を subcategory[] パスで多階層ツリー化。未分類(空)は path='' のルートノードへ
+export function subcategoryTree(section: string): SubcatNode[] {
+  const roots: SubcatNode[] = []
   for (const d of docsBySection(section)) {
-    let g = groups.find((x) => x.name === d.subcategory)
-    if (!g) { g = { name: d.subcategory, docs: [] }; groups.push(g) }
-    g.docs.push(d)
+    const segs = d.subcategory
+    if (segs.length === 0) {
+      let node = roots.find((n) => n.path === '')
+      if (!node) { node = { name: '', path: '', docs: [], children: [] }; roots.push(node) }
+      node.docs.push(d)
+      continue
+    }
+    let nodes = roots
+    segs.forEach((seg, i) => {
+      let node = nodes.find((n) => n.name === seg)
+      if (!node) { node = { name: seg, path: segs.slice(0, i + 1).join('/'), docs: [], children: [] }; nodes.push(node) }
+      if (i === segs.length - 1) node.docs.push(d) // 末端ノードに直下文書を置く
+      nodes = node.children
+    })
   }
-  return groups
+  return roots
+}
+
+// ツリーを平坦化（フィルタ選択肢用）。depth と配下含む件数を付与
+export interface FlatSubcatNode {
+  key: string
+  name: string
+  depth: number
+  count: number // このノード配下の文書総数（子孫含む）
+}
+function nodeTotalCount(node: SubcatNode): number {
+  return node.docs.length + node.children.reduce((acc, c) => acc + nodeTotalCount(c), 0)
+}
+export function flattenSubcatTree(nodes: SubcatNode[]): FlatSubcatNode[] {
+  const out: FlatSubcatNode[] = []
+  const walk = (ns: SubcatNode[], depth: number) => {
+    for (const n of ns) {
+      out.push({ key: n.path, name: n.name, depth, count: nodeTotalCount(n) })
+      walk(n.children, depth + 1)
+    }
+  }
+  walk(nodes, 0)
+  return out
+}
+
+// 文書の subcategory[] が filterKey のパス（"/" 区切り）配下にあるか（配下を含む）。
+// filterKey が 'all' または '' なら true
+export function subcategoryMatches(docSub: string[], filterKey: string): boolean {
+  if (!filterKey || filterKey === 'all') return true
+  const segs = filterKey.split('/')
+  if (docSub.length < segs.length) return false
+  return segs.every((s, i) => docSub[i] === s)
+}
+
+// 階層パス配列 → 表示ラベル（["認証","トークン"] → "認証 › トークン"）
+export function subcategoryLabel(sub: string[] | undefined): string {
+  return (sub ?? []).join(' › ')
 }
 
 // ホームの「最近の更新」: 全文書を新しい順に上位 N 件

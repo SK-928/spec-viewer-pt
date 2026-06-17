@@ -63,7 +63,7 @@ SpecViewer は設計書（仕様書）を閲覧・検索・ナビゲートする
 ---
 title: 注文 API 仕様                # 必須: 文書タイトル
 description: エンドポイント・リクエスト・レスポンス形式  # 一覧・OGP で使用
-subcategory: 注文                  # 必須: サブカテゴリ（サイドバーツリーの分類）
+subcategory: 注文                  # 必須: サブカテゴリ（サイドバーツリーの分類）。文字列1つ または 配列で多階層（例: [注文, 決済連携]）
 status: 承認済み                   # 必須: ドラフト | レビュー中 | 承認済み
 dependsOn:                         # 任意: 依存している文書（docs/ からの path）
   - api/payment/payment-api
