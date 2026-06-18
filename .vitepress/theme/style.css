@@ -102,6 +102,25 @@ mark {
 .prose-doc .custom-block.danger .custom-block-title { color: #b91c1c; }
 .prose-doc .custom-block.details { border-left-color: #94a3b8; background: #f8fafc; }
 .prose-doc .custom-block.details .custom-block-title { color: #334155; }
+.prose-doc .custom-block.note { border-left-color: #8b5cf6; background: #f5f3ff; }
+.prose-doc .custom-block.note .custom-block-title { color: #6d28d9; }
+.prose-doc .custom-block.card { border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.prose-doc .custom-block.card .custom-block-title { color: #334155; font-size: 1.05rem; font-weight: 700; border-bottom: 1px solid #e2e8f0; padding-bottom: .4em; margin-bottom: .6em; }
+/* card 内のレベル1リストはバッジ表示 */
+.prose-doc .custom-block.card > ul { list-style: none; padding-left: 0; margin: .5em 0; }
+.prose-doc .custom-block.card > ul > li { display: flex; align-items: baseline; gap: .6em; flex-wrap: wrap; margin: 0 0 .8em; padding: 0 0 .5em; background-image: linear-gradient(to right, #e2e8f0 50%, transparent 50%); background-size: 14px 1px; background-position: 0 100%; background-repeat: repeat-x; line-height: 1.5; }
+.prose-doc .custom-block.card > ul > li:last-child { margin-bottom: 0; padding-bottom: 0; background-image: none; }
+.prose-doc .custom-block.card > ul > li::before { content: none; }
+/* card 内のレベル1は太字（strong）をバッジ化。li 背景は持たないので子リストは広がらない */
+.prose-doc .custom-block.card > ul > li > strong:first-child { display: inline-block; background: #e0f2fe; color: #0369a1; border-radius: 6px; padding: .2em .6em; min-width: 3.4em; text-align: center; font-size: .85rem; font-weight: 600; line-height: 1.5; }
+/* card 内のレベル2はバッジの横に（マーカー/字下げなし） */
+.prose-doc .custom-block.card > ul > li > ul { padding-left: 0; margin: 0; }
+.prose-doc .custom-block.card > ul > li > ul > li { position: relative; padding-left: 1em; font-weight: 600; font-size: .92rem; }
+.prose-doc .custom-block.card > ul > li > ul > li::before { content: "–"; position: absolute; left: 0; top: 0; width: auto; height: auto; border-radius: 0; background: none; color: #64748b; }
+/* card 内のレベル3以降は » マーカー（旧レベル2の設定を移譲） */
+.prose-doc .custom-block.card > ul > li > ul > li > ul { padding-left: .5em; margin: .2em 0 .4em -4em; }
+.prose-doc .custom-block.card > ul > li > ul > li > ul > li { position: relative; padding-left: 1.1em; font-weight: 400; font-size: 1rem; }
+.prose-doc .custom-block.card > ul > li > ul > li > ul > li::before { content: "»"; position: absolute; left: 0; top: 0; width: auto; height: auto; border-radius: 0; background: none; color: #64748b; font-weight: 700; }
 
 /* doc 本文: dark */
 .dark .prose-doc h2, .dark .prose-doc h3, .dark .prose-doc h4 { color: #f1f5f9; }
@@ -133,6 +152,12 @@ mark {
 .dark .prose-doc .custom-block.danger .custom-block-title { color: #fca5a5; }
 .dark .prose-doc .custom-block.details { border-left-color: #475569; background: #1e293b; }
 .dark .prose-doc .custom-block.details .custom-block-title { color: #cbd5e1; }
+.dark .prose-doc .custom-block.note { border-left-color: #a78bfa; background: rgba(139,92,246,.14); }
+.dark .prose-doc .custom-block.note .custom-block-title { color: #c4b5fd; }
+.dark .prose-doc .custom-block.card { border-color: #334155; background: #1e293b; }
+.dark .prose-doc .custom-block.card .custom-block-title { color: #cbd5e1; border-color: #334155; }
+.dark .prose-doc .custom-block.card > ul > li > strong:first-child { background: rgba(56,189,248,.18); color: #7dd3fc; }
+.dark .prose-doc .custom-block.card > ul > li { background-image: linear-gradient(to right, #334155 50%, transparent 50%); }
 
 /* TOC（on-this-page） */
 .toc-link { display: block; padding: 5px 10px; border-radius: 6px; font-size: 13px; color: #64748b; line-height: 1.4; border-left: 2px solid transparent; }
